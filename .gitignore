@@ -1,0 +1,57 @@
+# ---> Go
+
+# Build binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go workspace
+bin/
+build/
+dist/
+
+# Go modules
+vendor/
+go.work
+go.work.sum
+
+# Dependency directories (if using Go vendoring)
+pkg/
+
+# Cache and logs
+*.log
+*.cache/
+*.tmp/
+tmp/
+*.swp
+
+# Test outputs
+coverage.out
+*.coverprofile
+*.cov
+
+# IDE/editor specific
+.vscode/
+.idea/
+*.iml
+*.sublime-workspace
+*.sublime-project
+
+# macOS and system files
+.DS_Store
+Thumbs.db
+
+# Environment / config files
+.env
+.env.local
+.env.*
+!.env.example
+
+# Temporary or local data
+*.bak
+*.old
+*.orig
