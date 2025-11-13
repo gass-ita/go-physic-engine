@@ -3,7 +3,7 @@ package physic
 import (
 	"fmt"
 
-	"github.com/gass_ita/go-physics-engine/common"
+	"github.com/gass-ita/go-physics-engine/common"
 	"gonum.org/v1/gonum/mat"
 )
 

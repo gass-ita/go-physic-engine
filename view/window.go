@@ -4,7 +4,7 @@ import (
 	"image/color"
 	"log"
 
-	"github.com/gass_ita/go-physics-engine/common"
+	"github.com/gass-ita/go-physics-engine/common"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )

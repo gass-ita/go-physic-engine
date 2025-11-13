@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/gass_ita/go-physics-engine/common"
-	"github.com/gass_ita/go-physics-engine/physic"
-	"github.com/gass_ita/go-physics-engine/view"
+	"github.com/gass-ita/go-physics-engine/common"
+	"github.com/gass-ita/go-physics-engine/physic"
+	"github.com/gass-ita/go-physics-engine/view"
 	"gonum.org/v1/gonum/mat"
 )
 

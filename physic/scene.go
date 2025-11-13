@@ -3,7 +3,7 @@ package physic
 import (
 	"time"
 
-	"github.com/gass_ita/go-physics-engine/common"
+	"github.com/gass-ita/go-physics-engine/common"
 )
 
 type Scene struct {

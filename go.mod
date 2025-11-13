@@ -1,4 +1,4 @@
-module github.com/gass_ita/go-physics-engine
+module github.com/gass-ita/go-physics-engine
 
 go 1.25.4
 
