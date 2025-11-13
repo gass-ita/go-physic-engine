@@ -79,15 +79,13 @@ func (g *Window) Draw(screen *ebiten.Image) {
 
 	for _, l := range g.linkPositions {
 		// TODO: probably this conversion should be done in the controller
-		// unused l
-		l, _ = l, 0
-		/* x1 := l.X1 * common.PX_PER_METER
+		x1 := l.X1 * common.PX_PER_METER
 		y1 := l.Y1 * common.PX_PER_METER
 		y1 = float64(screen.Bounds().Dy()) - y1
 		x2 := l.X2 * common.PX_PER_METER
 		y2 := l.Y2 * common.PX_PER_METER
-		y2 = float64(screen.Bounds().Dy()) - y2 */
-		//ebitenutil.DrawLine(screen, x1, y1, x2, y2, color.RGBA{0, 255, 0, 255})
+		y2 = float64(screen.Bounds().Dy()) - y2
+		ebitenutil.DrawLine(screen, x1, y1, x2, y2, color.RGBA{0, 255, 0, 255})
 	}
 
 	for _, p := range g.particlePositions {

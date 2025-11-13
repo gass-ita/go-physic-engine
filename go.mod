@@ -3,8 +3,8 @@ module github.com/gass-ita/go-physics-engine
 go 1.25.4
 
 require (
+	github.com/go-gl/mathgl v1.2.0
 	github.com/hajimehoshi/ebiten/v2 v2.9.4
-	gonum.org/v1/gonum v0.16.0
 )
 
 require (

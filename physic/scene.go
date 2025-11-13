@@ -10,108 +10,90 @@ type Scene struct {
 	Particles   []*Particle
 	Springs     []*Spring
 	Dampers     []*Damper
-	WorldLimits [4]float64 // xmin, ymin, xmax, ymax
+	WorldLimits [4]float64 // xmin, xmax, ymin, ymax
 }
 
-func NewScene(WorldLimits [4]float64) *Scene {
+func NewScene(world [4]float64) *Scene {
 	return &Scene{
 		Particles:   []*Particle{},
 		Springs:     []*Spring{},
 		Dampers:     []*Damper{},
-		WorldLimits: WorldLimits,
+		WorldLimits: world,
 	}
 }
 
-func (s *Scene) AddParticle(p *Particle) {
-	s.Particles = append(s.Particles, p)
-}
-
-func (s *Scene) AddSpring(spring *Spring) {
-	s.Springs = append(s.Springs, spring)
-}
-
-func (s *Scene) AddDamper(damper *Damper) {
-	s.Dampers = append(s.Dampers, damper)
-}
+func (s *Scene) AddParticle(p *Particle) { s.Particles = append(s.Particles, p) }
+func (s *Scene) AddSpring(sp *Spring)    { s.Springs = append(s.Springs, sp) }
+func (s *Scene) AddDamper(dp *Damper)    { s.Dampers = append(s.Dampers, dp) }
 
 func (s *Scene) Update(dt float64) {
 	for _, p := range s.Particles {
 		p.ApplyExternalForces()
 		p.UpdatePredictedState(dt)
 	}
-	for _, spring := range s.Springs {
-		spring.Update(dt)
+	for _, sp := range s.Springs {
+		sp.Update(dt)
 	}
-	for _, damper := range s.Dampers {
-		damper.Update(dt)
+	for _, dp := range s.Dampers {
+		dp.Update(dt)
 	}
 
-	// Clamp predicted positions to world limits
 	for _, p := range s.Particles {
-
 		p.ClampPosition(s.WorldLimits)
-	}
-
-	for _, p := range s.Particles {
 		p.Update(dt)
 	}
 }
 
-func (s *Scene) Start(dt float64, posChan chan<- []common.ParticlePos, linkChan chan<- []common.LinkPos, infoChan chan<- common.Info) {
+func (s *Scene) Start(dt float64, posChan chan<- []common.ParticlePos,
+	linkChan chan<- []common.LinkPos, infoChan chan<- common.Info) {
+
 	go func() {
 		ticker := time.NewTicker(time.Duration(dt * float64(time.Second)))
 		defer ticker.Stop()
 
 		for {
-			<-ticker.C // wait for next tick
+			<-ticker.C
 			start := time.Now()
 			s.Update(dt)
 			elapsed := time.Since(start).Milliseconds()
 
 			select {
 			case posChan <- func() []common.ParticlePos {
-				positions := make([]common.ParticlePos, len(s.Particles))
+				out := make([]common.ParticlePos, len(s.Particles))
 				for i, p := range s.Particles {
-					positions[i] = common.ParticlePos{
-						X:      p.Position.AtVec(0),
-						Y:      p.Position.AtVec(1),
+					out[i] = common.ParticlePos{
+						X:      p.Position.X(),
+						Y:      p.Position.Y(),
 						Radius: p.Radius,
 					}
 				}
-				return positions
+				return out
 			}():
 			default:
 			}
-			// Send spring positions (non-blocking)
+
 			select {
 			case linkChan <- func() []common.LinkPos {
-				positions := make([]common.LinkPos, len(s.Springs)+len(s.Dampers))
-				for i, s := range s.Springs {
-					positions[i] = common.LinkPos{
-						X1: s.P1.Position.AtVec(0),
-						Y1: s.P1.Position.AtVec(1),
-						X2: s.P2.Position.AtVec(0),
-						Y2: s.P2.Position.AtVec(1),
-					}
-				}
-				for _, d := range s.Dampers {
-					positions = append(positions, common.LinkPos{
-						X1: d.P1.Position.AtVec(0),
-						Y1: d.P1.Position.AtVec(1),
-						X2: d.P2.Position.AtVec(0),
-						Y2: d.P2.Position.AtVec(1),
+				links := make([]common.LinkPos, 0, len(s.Springs)+len(s.Dampers))
+				for _, sp := range s.Springs {
+					links = append(links, common.LinkPos{
+						X1: sp.P1.Position.X(), Y1: sp.P1.Position.Y(),
+						X2: sp.P2.Position.X(), Y2: sp.P2.Position.Y(),
 					})
 				}
-
-				return positions
+				for _, dp := range s.Dampers {
+					links = append(links, common.LinkPos{
+						X1: dp.P1.Position.X(), Y1: dp.P1.Position.Y(),
+						X2: dp.P2.Position.X(), Y2: dp.P2.Position.Y(),
+					})
+				}
+				return links
 			}():
 			default:
 			}
 
 			select {
-			case infoChan <- common.Info{
-				ElapsedTime: float64(elapsed),
-			}:
+			case infoChan <- common.Info{ElapsedTime: float64(elapsed)}:
 			default:
 			}
 		}

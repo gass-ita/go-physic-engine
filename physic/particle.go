@@ -4,26 +4,24 @@ import (
 	"fmt"
 
 	"github.com/gass-ita/go-physics-engine/common"
-	"gonum.org/v1/gonum/mat"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 type Particle struct {
-	Position mat.VecDense
-	Velocity mat.VecDense
+	Position   mgl64.Vec2
+	Velocity   mgl64.Vec2
+	Mass       float64
+	Radius     float64
+	Static     bool
+	ForceAccum mgl64.Vec2
 
-	Mass   float64
-	Radius float64
+	ForceFields []mgl64.Vec2
 
-	ForceAccum  mat.VecDense
-	Static      bool
-	ForceFields []*mat.VecDense
-
-	OldPosition mat.VecDense
-
-	PredictedPosition mat.VecDense
-	PredictedVelocity mat.VecDense
-	acc               mat.VecDense
-	newPos            mat.VecDense
+	OldPosition       mgl64.Vec2
+	PredictedPosition mgl64.Vec2
+	PredictedVelocity mgl64.Vec2
+	acc               mgl64.Vec2
+	newPos            mgl64.Vec2
 }
 
 func (p *Particle) ClampPosition(limits [4]float64) {
@@ -33,149 +31,97 @@ func (p *Particle) ClampPosition(limits [4]float64) {
 
 	xmin, xmax, ymin, ymax := limits[0], limits[1], limits[2], limits[3]
 
-	// Posizione X
-	if p.Position.AtVec(0) < xmin+p.Radius {
-		p.Position.SetVec(0, xmin+p.Radius)
-		p.Velocity.SetVec(0, -p.Velocity.AtVec(0)) // rimbalzo
-	} else if p.Position.AtVec(0) > xmax-p.Radius {
-		p.Position.SetVec(0, xmax-p.Radius)
-		p.Velocity.SetVec(0, -p.Velocity.AtVec(0)) // rimbalzo
+	// X
+	if p.Position.X() < xmin+p.Radius {
+		p.Position[0] = xmin + p.Radius
+		p.Velocity[0] = -p.Velocity.X()
+	} else if p.Position.X() > xmax-p.Radius {
+		p.Position[0] = xmax - p.Radius
+		p.Velocity[0] = -p.Velocity.X()
 	}
 
-	// Posizione Y
-	if p.Position.AtVec(1) < ymin+p.Radius {
-		p.Position.SetVec(1, ymin+p.Radius)
-		p.Velocity.SetVec(1, -p.Velocity.AtVec(1))
-	} else if p.Position.AtVec(1) > ymax-p.Radius {
-		p.Position.SetVec(1, ymax-p.Radius)
-		p.Velocity.SetVec(1, -p.Velocity.AtVec(1))
+	// Y
+	if p.Position.Y() < ymin+p.Radius {
+		p.Position[1] = ymin + p.Radius
+		p.Velocity[1] = -p.Velocity.Y()
+	} else if p.Position.Y() > ymax-p.Radius {
+		p.Position[1] = ymax - p.Radius
+		p.Velocity[1] = -p.Velocity.Y()
 	}
 }
 
-// Crea una nuova particella
-func NewParticle(pos_m, velocity *mat.VecDense, mass, radius float64, isStatic bool) *Particle {
-	dim, _ := pos_m.Dims()
-
-	Position := mat.NewVecDense(dim, nil)
-	Position.CopyVec(pos_m)
-	Velocity := mat.NewVecDense(dim, nil)
-	Velocity.CopyVec(velocity)
-
-	// OldPosition = pos - v*dt
-	oldPos := mat.NewVecDense(dim, nil)
-	oldPos.ScaleVec(common.DT_PHYSIC, velocity)
-	oldPos.SubVec(pos_m, oldPos)
-
-	forceAccum := mat.NewVecDense(dim, nil)
-	forceAccum.Zero()
-
-	PredictedPosition := mat.NewVecDense(dim, nil)
-	PredictedPosition.Zero()
-	PredictedVelocity := mat.NewVecDense(dim, nil)
-	PredictedVelocity.Zero()
-	acc := mat.NewVecDense(dim, nil)
-	newPos := mat.NewVecDense(dim, nil)
-	newPos.Zero()
-	acc.Zero()
-
-	if isStatic {
-		PredictedPosition.CopyVec(pos_m)
-		PredictedVelocity.Zero()
-	}
-
-	if isStatic {
-		mass = 1
-		velocity.Zero()
-	}
-
+func NewParticle(pos, vel mgl64.Vec2, mass, radius float64, isStatic bool) *Particle {
+	oldPos := pos.Sub(vel.Mul(common.DT_PHYSIC))
 	p := &Particle{
-		Position:          *Position,
-		Velocity:          *Velocity,
+		Position:          pos,
+		Velocity:          vel,
 		Mass:              mass,
 		Radius:            radius,
 		Static:            isStatic,
-		ForceAccum:        *forceAccum,
-		OldPosition:       *oldPos,
-		ForceFields:       []*mat.VecDense{},
-		PredictedPosition: *PredictedPosition,
-		PredictedVelocity: *PredictedVelocity,
-		acc:               *acc,
-		newPos:            *newPos,
+		ForceAccum:        mgl64.Vec2{0, 0},
+		ForceFields:       []mgl64.Vec2{},
+		OldPosition:       oldPos,
+		PredictedPosition: mgl64.Vec2{0, 0},
+		PredictedVelocity: mgl64.Vec2{0, 0},
+		acc:               mgl64.Vec2{0, 0},
+		newPos:            mgl64.Vec2{0, 0},
+	}
+
+	if isStatic {
+		p.PredictedPosition = pos
+		p.PredictedVelocity = mgl64.Vec2{0, 0}
+		p.Mass = 1
+		p.Velocity = mgl64.Vec2{0, 0}
 	}
 	return p
 }
 
-// Aggiunge una forza alla particella
-func (p *Particle) AddForce(force *mat.VecDense) {
-	p.ForceAccum.AddVec(&p.ForceAccum, force)
+func (p *Particle) AddForce(force mgl64.Vec2) {
+	p.ForceAccum = p.ForceAccum.Add(force)
 }
 
-// Applica le forze esterne accumulate
 func (p *Particle) ApplyExternalForces() {
-	p.ForceAccum.Zero()
+	p.ForceAccum = mgl64.Vec2{0, 0}
 	if p.Static {
 		return
 	}
 
-	p.ForceAccum.AddScaledVec(&p.ForceAccum, -common.AIR_FRICTION, &p.Velocity) // attrito dell'aria
+	// Air friction
+	p.ForceAccum = p.ForceAccum.Sub(p.Velocity.Mul(common.AIR_FRICTION))
 
+	// External force fields
 	for _, f := range p.ForceFields {
-		p.ForceAccum.AddVec(&p.ForceAccum, f)
+		p.ForceAccum = p.ForceAccum.Add(f)
 	}
 }
 
-// Aggiorna lo stato predetto (posizione e velocità) usando Verlet
 func (p *Particle) UpdatePredictedState(dt float64) {
 	if p.Static {
 		return
 	}
 
-	p.acc.CopyVec(&p.ForceAccum)
-	p.acc.ScaleVec(1/p.Mass, &p.acc)
-
-	// predictedPosition = 2*Position - OldPosition + a*dt^2
-	p.PredictedPosition.ScaleVec(2, &p.Position)
-	p.PredictedPosition.SubVec(&p.PredictedPosition, &p.OldPosition)
-	p.acc.ScaleVec(dt*dt, &p.acc)
-	p.PredictedPosition.AddVec(&p.PredictedPosition, &p.acc)
-
-	// predictedVelocity = (predictedPosition - OldPosition) / (2*dt)
-	p.PredictedVelocity.SubVec(&p.PredictedPosition, &p.OldPosition)
-	p.PredictedVelocity.ScaleVec(1/(2*dt), &p.PredictedVelocity)
+	p.acc = p.ForceAccum.Mul(1 / p.Mass)
+	p.PredictedPosition = p.Position.Mul(2).Sub(p.OldPosition).Add(p.acc.Mul(dt * dt))
+	p.PredictedVelocity = p.PredictedPosition.Sub(p.OldPosition).Mul(1 / (2 * dt))
 }
 
-// Aggiorna lo stato reale della particella usando Verlet
 func (p *Particle) Update(dt float64) {
 	if p.Static {
-		p.Velocity.Zero()
-		p.ForceAccum.Zero()
+		p.Velocity = mgl64.Vec2{0, 0}
+		p.ForceAccum = mgl64.Vec2{0, 0}
 		return
 	}
 
-	acc := mat.NewVecDense(p.ForceAccum.Len(), nil)
-	acc.CopyVec(&p.ForceAccum)
-	acc.ScaleVec(1/p.Mass, acc)
+	acc := p.ForceAccum.Mul(1 / p.Mass)
+	newPos := p.Position.Mul(2).Sub(p.OldPosition).Add(acc.Mul(dt * dt))
+	p.Velocity = newPos.Sub(p.OldPosition).Mul(1 / (2 * dt))
 
-	// calcola nuova posizione: x_new = 2*x - x_old + a*dt^2
-	newPos := mat.NewVecDense(p.Position.Len(), nil)
-	newPos.ScaleVec(2, &p.Position)
-	newPos.SubVec(newPos, &p.OldPosition)
-	acc.ScaleVec(dt*dt, acc)
-	newPos.AddVec(newPos, acc)
-	// aggiorna velocità: v = (x_new - x_old) / (2*dt)
-	p.Velocity.SubVec(newPos, &p.OldPosition)
-	p.Velocity.ScaleVec(1/(2*dt), &p.Velocity)
-
-	// aggiorna posizioni
-	p.OldPosition.CopyVec(&p.Position)
-	p.Position.CopyVec(newPos)
-
-	// reset forza accumulata
-	p.ForceAccum.Zero()
+	p.OldPosition = p.Position
+	p.Position = newPos
+	p.ForceAccum = mgl64.Vec2{0, 0}
 }
 
-// Stampa lo stato della particella
 func (p *Particle) String() string {
-	return fmt.Sprintf("Position: %v, Velocity: %v, Mass: %v, Radius: %v",
-		p.Position, p.Velocity, p.Mass, p.Radius)
+	return fmt.Sprintf("Pos:(%.3f,%.3f) Vel:(%.3f,%.3f) M:%.2f R:%.2f",
+		p.Position.X(), p.Position.Y(), p.Velocity.X(), p.Velocity.Y(), p.Mass, p.Radius)
 }
