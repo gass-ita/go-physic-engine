@@ -10,7 +10,7 @@ import (
 // LinkPos holds screen coordinates of a particle
 
 func main() {
-	WorldLimits := [4]float64{-10, 10, 0, 10} // xmin, xmax, ymin, ymax
+	WorldLimits := [4]float64{0, 13.4, 0, 10} // xmin, xmax, ymin, ymax
 	/* // --- Initialize physics ---
 	pos1 := mat.NewVecDense(2, []float64{0, 6})
 	pos2 := mat.NewVecDense(2, []float64{0, 7})
@@ -28,61 +28,73 @@ func main() {
 	scene := physic.NewScene(WorldLimits)
 	gravity := mat.NewVecDense(2, []float64{0, -9.81})
 
+	// make a simple pendulum with a fixed particle and a free particle connected by a spring
+	p1 := physic.NewParticle(mat.NewVecDense(2, []float64{6, 10}), mat.NewVecDense(2, []float64{0, 0}), 1.0, 0.05, true)
+	p2 := physic.NewParticle(mat.NewVecDense(2, []float64{6, 8}), mat.NewVecDense(2, []float64{5, 0}), 1.0, 0.05, false)
+	p2.ForceFields = append(p2.ForceFields, gravity)
+	scene.AddParticle(p1)
+	scene.AddParticle(p2)
+	spring := physic.NewSpring(p1, p2, 1000, 2.0)
+	scene.AddSpring(spring)
+
 	xOffset := 1.0
-	gridSize := 8
-	distanceBetweenParticles := 0.3
+	gridSize := 5
+	distanceBetweenParticles := 0.4
 	particleMass := 1.0
-	springK := 30.0
-	damperBeta := 0.1
+	springK := 150.0
+	damperBeta := 0.0
 	particleRadius := 0.05
 	particles := make([][]*physic.Particle, gridSize)
-	for i := range gridSize {
-		particles[i] = make([]*physic.Particle, gridSize)
-		for j := 0; j < gridSize; j++ {
-			pos := mat.NewVecDense(2, []float64{float64(i)*distanceBetweenParticles + xOffset, float64(j)*distanceBetweenParticles + 5})
-			vel := mat.NewVecDense(2, []float64{0, 0})
-			particles[i][j] = physic.NewParticle(pos, vel, particleMass, particleRadius, false)
-			particles[i][j].ForceFields = append(particles[i][j].ForceFields, gravity)
-			scene.AddParticle(particles[i][j])
+	for n := range 100 {
+		xOffset += float64(n) * 1
+		for i := range gridSize {
+			particles[i] = make([]*physic.Particle, gridSize)
+			for j := 0; j < gridSize; j++ {
+				pos := mat.NewVecDense(2, []float64{float64(i)*distanceBetweenParticles + xOffset, float64(j)*distanceBetweenParticles + 5})
+				vel := mat.NewVecDense(2, []float64{0, 0})
+				particles[i][j] = physic.NewParticle(pos, vel, particleMass, particleRadius, false)
+				particles[i][j].ForceFields = append(particles[i][j].ForceFields, gravity)
+				scene.AddParticle(particles[i][j])
+			}
 		}
-	}
 
-	// connect particles with springs 1 to every other forming a complete graph
-	for i := range gridSize {
-		for j := range gridSize {
-			for k := 0; k < gridSize; k++ {
-				for l := range gridSize {
-					if i == k && j == l {
-						continue
-					}
-					p1 := particles[i][j]
-					p2 := particles[k][l]
-					restLength := mat.Norm(mat.NewVecDense(2, []float64{
-						p2.Position.AtVec(0) - p1.Position.AtVec(0),
-						p2.Position.AtVec(1) - p1.Position.AtVec(1),
-					}), 2)
-					if springK != 0 {
-						spring := physic.NewSpring(p1, p2, springK, restLength)
-						scene.AddSpring(spring)
-					}
-					if damperBeta != 0 {
-						damper := physic.NewDamper(p1, p2, damperBeta)
-						scene.AddDamper(damper)
+		// connect particles with springs 1 to every other forming a complete graph
+		for i := range gridSize {
+			for j := range gridSize {
+				for k := 0; k < gridSize; k++ {
+					for l := range gridSize {
+						if i == k && j == l {
+							continue
+						}
+						p1 := particles[i][j]
+						p2 := particles[k][l]
+						restLength := mat.Norm(mat.NewVecDense(2, []float64{
+							p2.Position.AtVec(0) - p1.Position.AtVec(0),
+							p2.Position.AtVec(1) - p1.Position.AtVec(1),
+						}), 2)
+						if springK != 0 {
+							spring := physic.NewSpring(p1, p2, springK, restLength)
+							scene.AddSpring(spring)
+						}
+						if damperBeta != 0 {
+							damper := physic.NewDamper(p1, p2, damperBeta)
+							scene.AddDamper(damper)
+						}
 					}
 				}
 			}
 		}
 	}
-
 	// --- Channel to communicate positions ---
 	posChan := make(chan []common.ParticlePos, 1)
 	linkChan := make(chan []common.LinkPos, 1)
+	infoChan := make(chan common.Info, 1)
 
 	// --- Start physics simulation ---
-	scene.Start(common.DT_PHYSIC, posChan, linkChan)
+	scene.Start(common.DT_PHYSIC, posChan, linkChan, infoChan)
 
 	// --- Run Ebiten game loop ---
-	Window := view.NewWindow(posChan, linkChan)
+	Window := view.NewWindow(posChan, linkChan, infoChan)
 	Window.Run()
 
 }

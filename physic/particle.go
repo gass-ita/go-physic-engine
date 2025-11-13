@@ -22,6 +22,8 @@ type Particle struct {
 
 	PredictedPosition mat.VecDense
 	PredictedVelocity mat.VecDense
+	acc               mat.VecDense
+	newPos            mat.VecDense
 }
 
 func (p *Particle) ClampPosition(limits [4]float64) {
@@ -71,6 +73,10 @@ func NewParticle(pos_m, velocity *mat.VecDense, mass, radius float64, isStatic b
 	PredictedPosition.Zero()
 	PredictedVelocity := mat.NewVecDense(dim, nil)
 	PredictedVelocity.Zero()
+	acc := mat.NewVecDense(dim, nil)
+	newPos := mat.NewVecDense(dim, nil)
+	newPos.Zero()
+	acc.Zero()
 
 	if isStatic {
 		PredictedPosition.CopyVec(pos_m)
@@ -93,6 +99,8 @@ func NewParticle(pos_m, velocity *mat.VecDense, mass, radius float64, isStatic b
 		ForceFields:       []*mat.VecDense{},
 		PredictedPosition: *PredictedPosition,
 		PredictedVelocity: *PredictedVelocity,
+		acc:               *acc,
+		newPos:            *newPos,
 	}
 	return p
 }
@@ -109,6 +117,8 @@ func (p *Particle) ApplyExternalForces() {
 		return
 	}
 
+	p.ForceAccum.AddScaledVec(&p.ForceAccum, -common.AIR_FRICTION, &p.Velocity) // attrito dell'aria
+
 	for _, f := range p.ForceFields {
 		p.ForceAccum.AddVec(&p.ForceAccum, f)
 	}
@@ -120,15 +130,14 @@ func (p *Particle) UpdatePredictedState(dt float64) {
 		return
 	}
 
-	acc := mat.NewVecDense(p.ForceAccum.Len(), nil)
-	acc.CopyVec(&p.ForceAccum)
-	acc.ScaleVec(1/p.Mass, acc)
+	p.acc.CopyVec(&p.ForceAccum)
+	p.acc.ScaleVec(1/p.Mass, &p.acc)
 
 	// predictedPosition = 2*Position - OldPosition + a*dt^2
 	p.PredictedPosition.ScaleVec(2, &p.Position)
 	p.PredictedPosition.SubVec(&p.PredictedPosition, &p.OldPosition)
-	acc.ScaleVec(dt*dt, acc)
-	p.PredictedPosition.AddVec(&p.PredictedPosition, acc)
+	p.acc.ScaleVec(dt*dt, &p.acc)
+	p.PredictedPosition.AddVec(&p.PredictedPosition, &p.acc)
 
 	// predictedVelocity = (predictedPosition - OldPosition) / (2*dt)
 	p.PredictedVelocity.SubVec(&p.PredictedPosition, &p.OldPosition)
@@ -153,7 +162,6 @@ func (p *Particle) Update(dt float64) {
 	newPos.SubVec(newPos, &p.OldPosition)
 	acc.ScaleVec(dt*dt, acc)
 	newPos.AddVec(newPos, acc)
-
 	// aggiorna velocità: v = (x_new - x_old) / (2*dt)
 	p.Velocity.SubVec(newPos, &p.OldPosition)
 	p.Velocity.ScaleVec(1/(2*dt), &p.Velocity)

@@ -57,7 +57,7 @@ func (s *Scene) Update(dt float64) {
 	}
 }
 
-func (s *Scene) Start(dt float64, posChan chan<- []common.ParticlePos, linkChan chan<- []common.LinkPos) {
+func (s *Scene) Start(dt float64, posChan chan<- []common.ParticlePos, linkChan chan<- []common.LinkPos, infoChan chan<- common.Info) {
 	go func() {
 		ticker := time.NewTicker(time.Duration(dt * float64(time.Second)))
 		defer ticker.Stop()
@@ -66,10 +66,8 @@ func (s *Scene) Start(dt float64, posChan chan<- []common.ParticlePos, linkChan 
 			<-ticker.C // wait for next tick
 			start := time.Now()
 			s.Update(dt)
-			elapsed := time.Since(start)
-			_ = elapsed // currently not used, but could be logged for performance monitoring
+			elapsed := time.Since(start).Milliseconds()
 
-			// Send particle positions (non-blocking)
 			select {
 			case posChan <- func() []common.ParticlePos {
 				positions := make([]common.ParticlePos, len(s.Particles))
@@ -110,6 +108,12 @@ func (s *Scene) Start(dt float64, posChan chan<- []common.ParticlePos, linkChan 
 			default:
 			}
 
+			select {
+			case infoChan <- common.Info{
+				ElapsedTime: float64(elapsed),
+			}:
+			default:
+			}
 		}
 	}()
 }
