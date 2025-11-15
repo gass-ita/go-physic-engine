@@ -113,6 +113,9 @@ func (g *Window) Draw(screen *ebiten.Image) {
 
 	// Draw info text
 	ebitenutil.DebugPrintAt(screen, "Frame Time (ms): "+fmt.Sprintf("%.2f", g.info.ElapsedTime), 10, 10)
+	// Draw FPS
+	fps := fmt.Sprintf("FPS: %.1f", ebiten.CurrentFPS())
+	ebitenutil.DebugPrintAt(screen, fps, 10, 30)
 
 }
 
