@@ -8,6 +8,7 @@ import (
 	"github.com/gass-ita/go-physics-engine/common"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
 // Window holds state for Ebiten rendering
@@ -90,7 +91,7 @@ func (g *Window) Draw(screen *ebiten.Image) {
 		x2 := l.X2 * common.PX_PER_METER
 		y2 := l.Y2 * common.PX_PER_METER
 		y2 = float64(screen.Bounds().Dy()) - y2
-		ebitenutil.DrawLine(screen, x1, y1, x2, y2, link_col)
+		vector.StrokeLine(screen, float32(x1), float32(y1), float32(x2), float32(y2), 1, link_col, false)
 	}
 
 	particle_col := color.RGBA{
@@ -107,7 +108,7 @@ func (g *Window) Draw(screen *ebiten.Image) {
 		// flip Y axis
 		y = float64(screen.Bounds().Dy()) - y
 		radius := p.Radius * common.PX_PER_METER
-		ebitenutil.DrawCircle(screen, x, y, radius, particle_col)
+		vector.FillCircle(screen, float32(x), float32(y), float32(radius), particle_col, false)
 	}
 
 	// Draw info text
