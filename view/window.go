@@ -76,7 +76,12 @@ func (g *Window) Draw(screen *ebiten.Image) {
 	if g == nil || g.particlePositions == nil {
 		return
 	}
-
+	link_col := color.RGBA{
+		R: uint8((common.LINK_COLOR >> 24) & 0xFF),
+		G: uint8((common.LINK_COLOR >> 16) & 0xFF),
+		B: uint8((common.LINK_COLOR >> 8) & 0xFF),
+		A: uint8(common.LINK_COLOR & 0xFF),
+	}
 	for _, l := range g.linkPositions {
 		// TODO: probably this conversion should be done in the controller
 		x1 := l.X1 * common.PX_PER_METER
@@ -85,7 +90,14 @@ func (g *Window) Draw(screen *ebiten.Image) {
 		x2 := l.X2 * common.PX_PER_METER
 		y2 := l.Y2 * common.PX_PER_METER
 		y2 = float64(screen.Bounds().Dy()) - y2
-		ebitenutil.DrawLine(screen, x1, y1, x2, y2, color.RGBA{0, 255, 0, 255})
+		ebitenutil.DrawLine(screen, x1, y1, x2, y2, link_col)
+	}
+
+	particle_col := color.RGBA{
+		R: uint8((common.PARTICLE_COLOR >> 24) & 0xFF),
+		G: uint8((common.PARTICLE_COLOR >> 16) & 0xFF),
+		B: uint8((common.PARTICLE_COLOR >> 8) & 0xFF),
+		A: uint8(common.PARTICLE_COLOR & 0xFF),
 	}
 
 	for _, p := range g.particlePositions {
@@ -95,7 +107,7 @@ func (g *Window) Draw(screen *ebiten.Image) {
 		// flip Y axis
 		y = float64(screen.Bounds().Dy()) - y
 		radius := p.Radius * common.PX_PER_METER
-		ebitenutil.DrawCircle(screen, x, y, radius, color.RGBA{255, 0, 0, 255})
+		ebitenutil.DrawCircle(screen, x, y, radius, particle_col)
 	}
 
 	// Draw info text
