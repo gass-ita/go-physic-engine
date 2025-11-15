@@ -1,6 +1,7 @@
 package physic
 
 import (
+	"sync"
 	"time"
 
 	"github.com/gass-ita/go-physics-engine/common"
@@ -27,10 +28,20 @@ func (s *Scene) AddSpring(sp *Spring)    { s.Springs = append(s.Springs, sp) }
 func (s *Scene) AddDamper(dp *Damper)    { s.Dampers = append(s.Dampers, dp) }
 
 func (s *Scene) Update(dt float64) {
+	var wg sync.WaitGroup
+
+	// Apply external forces and update predicted state in parallel
+	wg.Add(len(s.Particles))
 	for _, p := range s.Particles {
-		p.ApplyExternalForces()
-		p.UpdatePredictedState(dt)
+		go func(p *Particle) {
+			defer wg.Done()
+			p.ApplyExternalForces()
+			p.UpdatePredictedState(dt)
+		}(p)
 	}
+	wg.Wait()
+
+	// Update springs and dampers serially
 	for _, sp := range s.Springs {
 		sp.Update(dt)
 	}
@@ -38,10 +49,16 @@ func (s *Scene) Update(dt float64) {
 		dp.Update(dt)
 	}
 
+	// Clamp and update positions in parallel
+	wg.Add(len(s.Particles))
 	for _, p := range s.Particles {
-		p.ClampPosition(s.WorldLimits)
-		p.Update(dt)
+		go func(p *Particle) {
+			defer wg.Done()
+			p.ClampPosition(s.WorldLimits)
+			p.Update(dt)
+		}(p)
 	}
+	wg.Wait()
 }
 
 func (s *Scene) Start(dt float64, posChan chan<- []common.ParticlePos,

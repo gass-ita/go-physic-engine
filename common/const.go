@@ -10,4 +10,6 @@ const (
 	WIDTH            = 800
 	HEIGHT           = 800
 	BACKGROUND_COLOR = 0x14141EFF
+	PARTICLE_COLOR   = 0xFF0000FF
+	LINK_COLOR       = 0x00FF00FF
 )

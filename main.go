@@ -28,12 +28,12 @@ func main() {
 	distance := 0.4
 	mass := 1.0
 	springK := 150.0
-	damperBeta := 0.0
+	damperBeta := 0.1
 	radius := 0.05
 	startX := 2.0
 	startY := 5.0
 	softBodySpacing := 2.5 // horizontal spacing between soft bodies
-	numSoftBodies := 10    // number of soft bodies (n)
+	numSoftBodies := 40    // number of soft bodies (n)
 
 	for n := 0; n < numSoftBodies; n++ {
 		xOffset := startX + float64(n)*softBodySpacing
